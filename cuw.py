@@ -1,4 +1,3 @@
-
 from scrapy import Selector
 from tqdm import tqdm
 import requests
@@ -19,7 +18,7 @@ c=conn.cursor()
 cabname=[]
 extractedcabs=[]
 rangestart=[]
-updatetempfiles_path= tempfile.gettempdir()+"\\winupdate"
+updatetempfiles_path= "/tmp/cabdata"
 patches=[]
 programs=[]
 final_updates_list=[]
@@ -57,11 +56,11 @@ def parse_wssuscn2cab(buff):
 		pass
 	else:
 		for f in os.listdir(updatetempfiles_path):
-			if os.path.isdir(updatetempfiles_path+"\\"+f):
-				os.system("rmdir "+updatetempfiles_path+"\\"+f+" /S /Q")
-		mute=subprocess.check_output(".\\7z.exe x "+updatetempfiles_path+"\\wsusscn2.cab "+cabtoextract+" -o"+updatetempfiles_path+" -y")
-		mute=subprocess.check_output(".\\7z.exe x "+updatetempfiles_path+"\\"+cabtoextract+" -o"+updatetempfiles_path+" -y")
-		os.system("del "+updatetempfiles_path+"\\"+cabtoextract)
+			if os.path.isdir(updatetempfiles_path+"/"+f):
+				os.system("rm -rf "+updatetempfiles_path+"/"+f+" /S /Q")
+		mute=subprocess.check_output("cabextract "+updatetempfiles_path+"/wsusscn2.cab "+cabtoextract+" -o"+updatetempfiles_path+" -y")
+		mute=subprocess.check_output("cabextract "+updatetempfiles_path+"/"+cabtoextract+" -o"+updatetempfiles_path+" -y")
+		os.system("rm "+updatetempfiles_path+"/"+cabtoextract)
 		extractedcabs.append(cabtoextract)
 	
 	prerequisite=list_to_string(scrape.xpath("//prerequisites/*/@id").extract())
@@ -194,20 +193,20 @@ def update():
 		
 
 		
-	download_cab()
+	# download_cab()
 	print "\n\nStep 2 out of 4 :- Reading data from cab file and feeding the database\n\n"
-	mute=subprocess.check_output(".\\7z.exe x "+updatetempfiles_path+"\\wsusscn2.cab index.xml -o"+updatetempfiles_path+" -y")
-	mute=subprocess.check_output(".\\7z.exe x "+updatetempfiles_path+"\\wsusscn2.cab package.cab -o"+updatetempfiles_path+" -y")
-	mute=subprocess.check_output(".\\7z.exe x "+updatetempfiles_path+"\\package.cab package.xml -o"+updatetempfiles_path+" -y")
-	os.system("del \""+updatetempfiles_path+"\\package.cab\"")
-	indexfile=open(updatetempfiles_path+"\\index.xml","r")
+	mute=subprocess.check_output("cabextract "+updatetempfiles_path+"/wsusscn2.cab index.xml -o "+updatetempfiles_path+" -y")
+	mute=subprocess.check_output("cabextract "+updatetempfiles_path+"/wsusscn2.cab package.cab -o "+updatetempfiles_path+" -y")
+	mute=subprocess.check_output("cabextract "+updatetempfiles_path+"/package.cab package.xml -o "+updatetempfiles_path+" -y")
+	os.system("rm "+updatetempfiles_path+"/package.cab")
+	indexfile=open(updatetempfiles_path+"/index.xml","r")
 	indexf=indexfile.readlines()[0]
 	scrape=Selector(text=indexf)
 	cabname=scrape.xpath("//cab/@name").extract()
 	rangestart=scrape.xpath("//cab/@rangestart").extract()
 	indexfile.close()
 	
-	context = ET.iterparse(updatetempfiles_path+'\\package.xml', events=('end',))
+	context = ET.iterparse(updatetempfiles_path+'/package.xml', events=('end',))
 	
 	#Counting the number of tags to process for our status bar for Step 2
 	i=0
@@ -294,39 +293,41 @@ def export(output_file):
 	fileout.close()
 	print "\n\n Report exported Successfully !!"
 
-if os.path.isfile("7z.exe") and os.path.isfile("7z.dll"):
-	pass
-else:
-	print_ascii_art()
-	print "7z.exe or/and 7z.dll file not found in the current directory.\n\nCUW cannot function without these dependencies.\n\nPlease download the 7z binaries for your architecture (x86 / x64) and extract the mentioned files in the current directory and run the tool. Link :https://www.7-zip.org/download.html"
-	sys.exit(1)
-if sys.argv.__len__()==1:
-	help()
-elif sys.argv.__len__()==2:
-	if sys.argv[1] == "update":
-		update()
-	else:
-		help()
-elif sys.argv.__len__() ==3:
-	if sys.argv[1]== "scan":
-		if os.path.isfile(sys.argv[2]):
-			scan(sys.argv[2])
-			records=c.execute("select title,kb from MSPatchTable where updateid in "+str(final_updates_list).replace("u'","'").replace("[","(").replace("]",")")+";")
-			for i in records:
-				print i[0]+" : "+i[1]
-		else:
-			print "\n\n"+sys.argv[2]+" file does not exist !!"
-			help()
-	elif sys.argv[1] == "exportdb":
-		exportdb(sys.argv[2])
-	else:
-		help()
-elif sys.argv.__len__()==5:
-	if sys.argv[1]== "scan" and os.path.isfile(sys.argv[2]) and sys.argv[3] == "output":
-		scan(sys.argv[2])
-		export(sys.argv[4])
-	else:
-		help()
-else:
-	help()
-	
+# if os.path.isfile("cabextract"):
+# 	pass
+# else:
+# 	print_ascii_art()
+# 	print "7z.exe or/and 7z.dll file not found in the current directory.\n\nCUW cannot function without these dependencies.\n\nPlease download the 7z binaries for your architecture (x86 / x64) and extract the mentioned files in the current directory and run the tool. Link :https://www.7-zip.org/download.html"
+# 	sys.exit(1)
+update()
+#
+# if sys.argv.__len__()==1:
+# 	help()
+# elif sys.argv.__len__()==2:
+# 	if sys.argv[1] == "update":
+# 		update()
+# 	else:
+# 		help()
+# elif sys.argv.__len__() ==3:
+# 	if sys.argv[1]== "scan":
+# 		if os.path.isfile(sys.argv[2]):
+# 			scan(sys.argv[2])
+# 			records=c.execute("select title,kb from MSPatchTable where updateid in "+str(final_updates_list).replace("u'","'").replace("[","(").replace("]",")")+";")
+# 			for i in records:
+# 				print i[0]+" : "+i[1]
+# 		else:
+# 			print "\n\n"+sys.argv[2]+" file does not exist !!"
+# 			help()
+# 	elif sys.argv[1] == "exportdb":
+# 		exportdb(sys.argv[2])
+# 	else:
+# 		help()
+# elif sys.argv.__len__()==5:
+# 	if sys.argv[1]== "scan" and os.path.isfile(sys.argv[2]) and sys.argv[3] == "output":
+# 		scan(sys.argv[2])
+# 		export(sys.argv[4])
+# 	else:
+# 		help()
+# else:
+# 	help()
+#
